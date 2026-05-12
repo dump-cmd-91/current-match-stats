@@ -123,7 +123,7 @@ function footer() {
 function buildEmbed(players, map) {
   return new EmbedBuilder()
     .setTitle('Sentinel VII | New York — Player Stats')
-    .setDescription(map ? `**${map}**` : '')
+    .setDescription(map ? `**${map}**\n[View Full Stats](https://svii-stats.radicalgamingstats.com/)` : '')
     .setColor(CRIMSON)
     .setImage(BANNER_URL)
     .addFields(
@@ -142,7 +142,7 @@ function buildEmbed(players, map) {
 function buildEmptyEmbed(map) {
   return new EmbedBuilder()
     .setTitle('Sentinel VII | New York — Player Stats')
-    .setDescription(map ? `**${map}** — Match starting...` : 'No players currently on the server.')
+    .setDescription(map ? `**${map}** — Match starting...\n[View Full Stats](https://svii-stats.radicalgamingstats.com/)` : 'No players currently on the server.\n[View Full Stats](https://svii-stats.radicalgamingstats.com/)')
     .setColor(0x555555)
     .setImage(BANNER_URL)
     .setFooter({ text: footer() })
