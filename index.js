@@ -32,7 +32,7 @@ async function getLiveStats() {
   const data = await crconGet('get_live_scoreboard');
   console.log('[debug] raw type:', typeof data, Array.isArray(data) ? 'array len=' + data.length : '');
   console.log('[debug] raw keys:', data ? Object.keys(data).join(', ') : 'null');
-  const players = Array.isArray(data) ? data : (data?.players ?? data?.stats ?? []);
+  const players = Array.isArray(data) ? data : (data?.stats ?? data?.players ?? []);
   if (players.length) {
     console.log('[debug] player fields:', Object.keys(players[0]).join(', '));
     console.log('[debug] first player sample:', JSON.stringify(players[0]));
@@ -103,10 +103,7 @@ function buildEmbed(players, map) {
       topList('Kills',   players, 'kills',                            v => v),
       topList('KDR',     players, getKdr,                             v => v.toFixed(2)),
       topList('KPM',     players, 'kills_per_minute',                 v => v.toFixed(2)),
-      topList('Combat',  players, p => getField(p, 'combat',  'combat_effectiveness', 'combat_score'),  v => v),
-      topList('Offense', players, p => getField(p, 'offense', 'offensive', 'offense_score'),            v => v),
-      topList('Defense', players, p => getField(p, 'defense', 'defensive', 'defense_score'),            v => v),
-      topList('Support', players, p => getField(p, 'support', 'support_score'),                         v => v),
+
     )
     .setFooter({ text: footer() })
     .setTimestamp();
