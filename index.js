@@ -37,11 +37,24 @@ async function getLiveStats() {
 async function getScores() {
   try {
     const data = await crconGet('get_team_view');
+    console.log('[debug] get_team_view keys:', JSON.stringify(Object.keys(data ?? {})));
+
     const scores = {};
-    const sides = [data?.allies, data?.axis].filter(Boolean);
+    const sides  = [data?.allies, data?.axis].filter(Boolean);
+
     for (const side of sides) {
-      const players = side?.players ?? [];
-      for (const p of players) {
+      // Players can be top-level or nested inside squads
+      const directPlayers = side?.players ?? [];
+      const squadPlayers  = side?.squads
+        ? Object.values(side.squads).flatMap(sq => sq?.players ?? [])
+        : [];
+      const commander = side?.commander ? [side.commander] : [];
+      const all = [...directPlayers, ...squadPlayers, ...commander];
+
+      console.log(`[debug] side player count: ${all.length}`);
+      if (all[0]) console.log('[debug] sample team player:', JSON.stringify(all[0], null, 2));
+
+      for (const p of all) {
         const id = p.player_id ?? p.steam_id_64;
         if (id) {
           scores[id] = {
@@ -53,8 +66,11 @@ async function getScores() {
         }
       }
     }
+
+    console.log(`[debug] scores map size: ${Object.keys(scores).length}`);
     return scores;
-  } catch {
+  } catch (err) {
+    console.error('[getScores] error:', err.message);
     return {};
   }
 }
