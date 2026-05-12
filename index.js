@@ -34,6 +34,31 @@ async function getLiveStats() {
   return players;
 }
 
+async function getScores() {
+  try {
+    const data = await crconGet('get_team_view');
+    const scores = {};
+    const sides = [data?.allies, data?.axis].filter(Boolean);
+    for (const side of sides) {
+      const players = side?.players ?? [];
+      for (const p of players) {
+        const id = p.player_id ?? p.steam_id_64;
+        if (id) {
+          scores[id] = {
+            combat:  p.combat  ?? 0,
+            offense: p.offense ?? 0,
+            defense: p.defense ?? 0,
+            support: p.support ?? 0,
+          };
+        }
+      }
+    }
+    return scores;
+  } catch {
+    return {};
+  }
+}
+
 async function getCurrentMapName() {
   try {
     const raw = await crconGet('get_map');
@@ -84,7 +109,6 @@ function footer() {
 // ── Embed builder ─────────────────────────────────────────────────────────────
 
 function buildEmbed(players, map) {
-  console.log('[debug] sample player:', JSON.stringify(players[0], null, 2));
   return new EmbedBuilder()
     .setTitle('Sentinel VII | New York — Player Stats')
     .setDescription(map ? `**${map}**` : '')
@@ -117,8 +141,20 @@ function buildEmptyEmbed() {
 
 async function updateEmbed(channel) {
   try {
-    const [players, map] = await Promise.all([getLiveStats(), getCurrentMapName()]);
-    const embed = players.length ? buildEmbed(players, map) : buildEmptyEmbed();
+    const [players, scores, map] = await Promise.all([
+      getLiveStats(),
+      getScores(),
+      getCurrentMapName(),
+    ]);
+
+    // Merge team view scores into live scoreboard players
+    const merged = players.map(p => {
+      const id = p.player_id ?? p.steam_id_64;
+      const s  = scores[id] ?? {};
+      return { ...p, ...s };
+    });
+
+    const embed = merged.length ? buildEmbed(merged, map) : buildEmptyEmbed();
 
     if (embedMessageId) {
       try {
