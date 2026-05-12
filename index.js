@@ -52,10 +52,13 @@ async function getScores() {
         const id = p.player_id ?? p.steam_id_64;
         if (id) {
           scores[id] = {
-            combat:  p.combat  ?? 0,
-            offense: p.offense ?? 0,
-            defense: p.defense ?? 0,
-            support: p.support ?? 0,
+            kills:            p.kills            ?? 0,
+            kill_death_ratio: p.kill_death_ratio ?? p.kdr ?? 0,
+            kills_per_minute: p.kills_per_minute ?? 0,
+            combat:           p.combat           ?? 0,
+            offense:          p.offense          ?? 0,
+            defense:          p.defense          ?? 0,
+            support:          p.support          ?? 0,
           };
         }
       }
@@ -174,18 +177,16 @@ async function updateEmbed(channel) {
 
     // Detect map change — flush stale stats immediately
     const mapChanged = currentMap !== null && map !== currentMap;
-    if (mapChanged) {
-      console.log(`[map] changed: ${currentMap} → ${map}`);
-    }
+    if (mapChanged) console.log(`[map] changed: ${currentMap} → ${map}`);
     currentMap = map;
 
+    // Merge get_team_view data (kills, kdr, kpm, scores) over live scoreboard
     const merged = players.map(p => {
       const id = p.player_id ?? p.steam_id_64;
       const s  = scores[id] ?? {};
       return { ...p, ...s };
     });
 
-    // Show empty state on map change until CRCON has fresh stats
     const embed = (mapChanged || !merged.length)
       ? buildEmptyEmbed(map)
       : buildEmbed(merged, map);
