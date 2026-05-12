@@ -16,6 +16,7 @@ const BANNER_URL      = 'https://media.discordapp.net/attachments/14941699519997
 const CRIMSON         = 0xDC143C;
 
 let embedMessageId = null;
+let currentMap     = null;
 
 // ── CRCON ─────────────────────────────────────────────────────────────────────
 
@@ -135,10 +136,10 @@ function buildEmbed(players, map) {
     .setTimestamp();
 }
 
-function buildEmptyEmbed() {
+function buildEmptyEmbed(map) {
   return new EmbedBuilder()
     .setTitle('Sentinel VII | New York — Player Stats')
-    .setDescription('No players currently on the server.')
+    .setDescription(map ? `**${map}** — Match starting...` : 'No players currently on the server.')
     .setColor(0x555555)
     .setImage(BANNER_URL)
     .setFooter({ text: footer() })
@@ -171,13 +172,23 @@ async function updateEmbed(channel) {
       getCurrentMapName(),
     ]);
 
+    // Detect map change — flush stale stats immediately
+    const mapChanged = currentMap !== null && map !== currentMap;
+    if (mapChanged) {
+      console.log(`[map] changed: ${currentMap} → ${map}`);
+    }
+    currentMap = map;
+
     const merged = players.map(p => {
       const id = p.player_id ?? p.steam_id_64;
       const s  = scores[id] ?? {};
       return { ...p, ...s };
     });
 
-    const embed = merged.length ? buildEmbed(merged, map) : buildEmptyEmbed();
+    // Show empty state on map change until CRCON has fresh stats
+    const embed = (mapChanged || !merged.length)
+      ? buildEmptyEmbed(map)
+      : buildEmbed(merged, map);
 
     if (embedMessageId) {
       try {
@@ -202,10 +213,7 @@ async function updateEmbed(channel) {
 client.once(Events.ClientReady, async () => {
   console.log(`[bot] online as ${client.user.tag}`);
   const channel = await client.channels.fetch(DISCORD_CHANNEL_ID);
-
-  // Recover existing embed message across restarts
   embedMessageId = await findExistingEmbed(channel);
-
   await updateEmbed(channel);
   setInterval(() => updateEmbed(channel), UPDATE_INTERVAL);
 });
