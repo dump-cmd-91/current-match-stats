@@ -147,6 +147,22 @@ function buildEmptyEmbed() {
 
 // ── Embed lifecycle ───────────────────────────────────────────────────────────
 
+async function findExistingEmbed(channel) {
+  try {
+    const messages = await channel.messages.fetch({ limit: 50 });
+    const existing = messages.find(
+      m => m.author.id === client.user.id && m.embeds.length > 0
+    );
+    if (existing) {
+      console.log(`[embed] found existing message → ${existing.id}`);
+      return existing.id;
+    }
+  } catch (err) {
+    console.error('[findExistingEmbed] error:', err.message);
+  }
+  return null;
+}
+
 async function updateEmbed(channel) {
   try {
     const [players, scores, map] = await Promise.all([
@@ -186,6 +202,10 @@ async function updateEmbed(channel) {
 client.once(Events.ClientReady, async () => {
   console.log(`[bot] online as ${client.user.tag}`);
   const channel = await client.channels.fetch(DISCORD_CHANNEL_ID);
+
+  // Recover existing embed message across restarts
+  embedMessageId = await findExistingEmbed(channel);
+
   await updateEmbed(channel);
   setInterval(() => updateEmbed(channel), UPDATE_INTERVAL);
 });
