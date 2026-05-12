@@ -29,16 +29,8 @@ async function crconGet(endpoint) {
 }
 
 async function getLiveStats() {
-  const data = await crconGet('get_live_scoreboard');
-  console.log('[debug] raw type:', typeof data, Array.isArray(data) ? 'array len=' + data.length : '');
-  console.log('[debug] raw keys:', data ? Object.keys(data).join(', ') : 'null');
+  const data    = await crconGet('get_live_scoreboard');
   const players = Array.isArray(data) ? data : (data?.stats ?? data?.players ?? []);
-  if (players.length) {
-    console.log('[debug] player fields:', Object.keys(players[0]).join(', '));
-    console.log('[debug] first player sample:', JSON.stringify(players[0]));
-  } else {
-    console.log('[debug] no players found in response');
-  }
   return players;
 }
 
