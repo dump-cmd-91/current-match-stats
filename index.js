@@ -49,12 +49,10 @@ function getKdr(p) {
   return p.kill_death_ratio ?? p.kdr ?? (p.kills / Math.max(p.deaths || 1, 1));
 }
 
-// Try multiple possible field name variants
 function getField(p, ...keys) {
   for (const k of keys) {
     if (p[k] != null && p[k] !== 0) return p[k];
   }
-  // Return 0 if all are 0 (still valid data)
   for (const k of keys) {
     if (p[k] != null) return p[k];
   }
@@ -86,16 +84,20 @@ function footer() {
 // ── Embed builder ─────────────────────────────────────────────────────────────
 
 function buildEmbed(players, map) {
+  console.log('[debug] sample player:', JSON.stringify(players[0], null, 2));
   return new EmbedBuilder()
     .setTitle('Sentinel VII | New York — Player Stats')
     .setDescription(map ? `**${map}**` : '')
     .setColor(CRIMSON)
     .setImage(BANNER_URL)
     .addFields(
-      topList('Kills',   players, 'kills',                            v => v),
-      topList('KDR',     players, getKdr,                             v => v.toFixed(2)),
-      topList('KPM',     players, 'kills_per_minute',                 v => v.toFixed(2)),
-
+      topList('Kills',          players, 'kills',            v => v),
+      topList('KDR',            players, getKdr,             v => v.toFixed(2)),
+      topList('KPM',            players, 'kills_per_minute', v => v.toFixed(2)),
+      topList('Combat Score',   players, 'combat',           v => v),
+      topList('Offense Score',  players, 'offense',          v => v),
+      topList('Defense Score',  players, 'defense',          v => v),
+      topList('Support Score',  players, 'support',          v => v),
     )
     .setFooter({ text: footer() })
     .setTimestamp();
