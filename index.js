@@ -30,6 +30,12 @@ async function crconGet(endpoint) {
 
 async function getLiveStats() {
   const data    = await crconGet('get_live_scoreboard');
+  // Log raw fields on first call so we can verify field names
+  if (Array.isArray(data) && data.length) {
+    console.log('[debug] player fields:', Object.keys(data[0]).join(', '));
+  } else if (data?.players?.length) {
+    console.log('[debug] player fields:', Object.keys(data.players[0]).join(', '));
+  }
   const players = Array.isArray(data) ? data : (data?.players ?? data?.stats ?? []);
   return players;
 }
@@ -43,27 +49,40 @@ async function getCurrentMapName() {
   }
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── Formatting ────────────────────────────────────────────────────────────────
 
 function getKdr(p) {
   return p.kill_death_ratio ?? p.kdr ?? (p.kills / Math.max(p.deaths || 1, 1));
 }
 
-function topList(players, keyFn, format) {
+// Try multiple possible field name variants
+function getField(p, ...keys) {
+  for (const k of keys) {
+    if (p[k] != null && p[k] !== 0) return p[k];
+  }
+  // Return 0 if all are 0 (still valid data)
+  for (const k of keys) {
+    if (p[k] != null) return p[k];
+  }
+  return null;
+}
+
+function topList(label, players, keyFn, format) {
   const sorted = [...players]
-    .map(p => ({ ...p, _val: typeof keyFn === 'function' ? keyFn(p) : p[keyFn] }))
+    .map(p => ({ ...p, _val: typeof keyFn === 'function' ? keyFn(p) : getField(p, keyFn) }))
     .filter(p => p._val != null && !isNaN(p._val))
     .sort((a, b) => b._val - a._val)
     .slice(0, TOP_N);
 
-  if (!sorted.length) return '```\nNo data\n```';
+  if (!sorted.length) return { name: label, value: '```\nNo data\n```', inline: false };
 
   const lines = sorted.map((p, i) => {
-    const name = (p.player ?? p.name ?? 'Unknown').slice(0, 18).padEnd(18);
-    return `[#${i + 1}] ${name} ${format(p._val)}`;
+    const val  = String(format(p._val)).padStart(6);
+    const name = (p.player ?? p.name ?? 'Unknown').slice(0, 20);
+    return `[#${i + 1}] ${val}  ${name}`;
   });
 
-  return '```\n' + lines.join('\n') + '\n```';
+  return { name: label, value: '```\n' + lines.join('\n') + '\n```', inline: false };
 }
 
 function footer() {
@@ -73,30 +92,19 @@ function footer() {
 // ── Embed builder ─────────────────────────────────────────────────────────────
 
 function buildEmbed(players, map) {
-  const kills   = topList(players, 'kills',            v => v);
-  const kdr     = topList(players, getKdr,             v => v.toFixed(2));
-  const kpm     = topList(players, 'kills_per_minute', v => v.toFixed(2));
-  const combat  = topList(players, 'combat',           v => v);
-  const offense = topList(players, 'offense',          v => v);
-  const defense = topList(players, 'defense',          v => v);
-  const support = topList(players, 'support',          v => v);
-
   return new EmbedBuilder()
     .setTitle('Sentinel VII | New York — Player Stats')
     .setDescription(map ? `**${map}**` : '')
     .setColor(CRIMSON)
     .setImage(BANNER_URL)
     .addFields(
-      { name: 'Kills',   value: kills,   inline: true  },
-      { name: 'KDR',     value: kdr,     inline: true  },
-      { name: '\u200B',  value: '\u200B', inline: false },
-      { name: 'KPM',     value: kpm,     inline: true  },
-      { name: 'Combat',  value: combat,  inline: true  },
-      { name: '\u200B',  value: '\u200B', inline: false },
-      { name: 'Offense', value: offense, inline: true  },
-      { name: 'Defense', value: defense, inline: true  },
-      { name: '\u200B',  value: '\u200B', inline: false },
-      { name: 'Support', value: support, inline: false },
+      topList('Kills',   players, 'kills',                            v => v),
+      topList('KDR',     players, getKdr,                             v => v.toFixed(2)),
+      topList('KPM',     players, 'kills_per_minute',                 v => v.toFixed(2)),
+      topList('Combat',  players, p => getField(p, 'combat',  'combat_effectiveness', 'combat_score'),  v => v),
+      topList('Offense', players, p => getField(p, 'offense', 'offensive', 'offense_score'),            v => v),
+      topList('Defense', players, p => getField(p, 'defense', 'defensive', 'defense_score'),            v => v),
+      topList('Support', players, p => getField(p, 'support', 'support_score'),                         v => v),
     )
     .setFooter({ text: footer() })
     .setTimestamp();
